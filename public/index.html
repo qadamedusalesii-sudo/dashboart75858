@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qadam — menejerlar kunlik ishi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --font-anthropic-sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-anthropic-serif:'Source Serif 4',Georgia,serif;
+  --cds-font-size-caption:12px;--cds-font-size-body:14px;--cds-font-size-heading:16px;--cds-font-size-title:28px;--cds-font-weight-medium:500;
+  --cds-gap-xs:4px;--cds-gap-sm:8px;--cds-gap-md:12px;--cds-gap-lg:20px;--cds-gap-xl:28px;
+  --cds-pad-xs:4px;--cds-pad-sm:8px;--cds-pad-md:12px;--cds-pad-lg:18px;--cds-pad-xl:28px;
+  --cds-radius:12px;--cds-dur-slow:.3s;--cds-ease-out:cubic-bezier(.2,.8,.2,1);
+  --cds-shadow-popover:0 8px 24px rgba(30,0,0,.18);--cds-chart-axis:#d9c3c3;--cds-chart-reference:#b02a2a;
+}
+html,body{margin:0;padding:0;background:#3a0d0d;min-height:100%}
+#dash-root{min-height:100vh}
+#dash-root > .qd{min-height:100vh}
+</style>
+<script src="vendor/d3.min.js"></script>
+<script src="dash-shim.js"></script>
+</head>
+<body>
+<div id="dash-root">
+<style>
+#dash-root{--dash-gutter:0}
+.qd{
+  --q1:#3a0d0d;--q2:#7a1f1f;--q3:#b02a2a;--q4:#5c1717;
+  --color-panel:#ffffff;--color-fg:#2a1414;--color-fg-muted:#86706f;--color-border-line:#efdede;--color-bg:#faf3f2;
+  --color-ok:#1f8a4f;--color-warn:#b4730f;--color-bad:#c62f2f;
+  --cds-surface-popover:#ffffff;--cds-border:#efdede;--cds-text-secondary:#86706f;--cds-chart-grid:#f1e4e4;--cds-chart-muted:#d9c3c3;
+  background:radial-gradient(1200px 500px at 85% -10%,rgba(176,42,42,.55),transparent 60%),linear-gradient(160deg,var(--q1) 0%,var(--q2) 55%,var(--q4) 100%);
+  padding:clamp(16px,3vw,36px);min-height:100%;border-radius:0}
+.qd .head,.qd .head h1{color:#fff}
+.qd .eyebrow{color:rgba(255,255,255,.62)!important}
+.qd .sub{color:rgba(255,255,255,.78)!important}
+.qd .live{background:rgba(255,255,255,.14)!important;color:#bff0cf!important}
+.qd .nav{background:rgba(255,255,255,.10)!important;border-color:rgba(255,255,255,.22)!important;backdrop-filter:blur(6px)}
+.qd .nav button,.qd .nav input{color:#fff!important;color-scheme:dark}
+.qd .nav input{border-color:rgba(255,255,255,.22)!important}
+.qd .nav .today{border-color:rgba(255,255,255,.22)!important}
+.qd .nav button:hover:not(:disabled){background:rgba(255,255,255,.12)!important}
+.qd .nav .today.on{background:#fff!important;color:var(--q2)!important}
+.qd .st-card,.qd .kpis,.qd .mc,.qd .panel,.qd .tw{box-shadow:0 10px 30px -12px rgba(20,0,0,.45)}
+.qd .kpis{border-color:transparent!important}
+.qd .seg{background:rgba(255,255,255,.10)!important;border-color:rgba(255,255,255,.22)!important}
+.qd .seg button{color:rgba(255,255,255,.8)!important}
+.qd .seg button.on{background:#fff!important;color:var(--q2)!important;font-weight:500}
+.qd .filters input,.qd .filters select{background:rgba(255,255,255,.95)!important;border-color:transparent!important}
+.qd .count{color:rgba(255,255,255,.7)!important}
+.qd .foot{color:rgba(255,255,255,.62)!important}
+.qd .empty{background:rgba(255,255,255,.08);color:rgba(255,255,255,.8)!important;border-color:rgba(255,255,255,.3)!important}
+.qd .panel h2,.qd .mc-name{color:var(--q4)}
+.qd .kpi .v,.qd .mc-foot .money{color:var(--q2)}
+.qd thead tr.gr th{color:var(--q3)!important}
+.qd .fun .fv{color:var(--q4)}
+.qd{font-family:var(--font-anthropic-sans);display:flex;flex-direction:column;gap:var(--cds-gap-lg);color:var(--color-fg);
+  --ok-bg:color-mix(in srgb,var(--color-ok) 12%,transparent);--warn-bg:color-mix(in srgb,var(--color-warn) 14%,transparent);--bad-bg:color-mix(in srgb,var(--color-bad) 12%,transparent);
+  --ok-line:color-mix(in srgb,var(--color-ok) 45%,transparent);--warn-line:color-mix(in srgb,var(--color-warn) 45%,transparent);--bad-line:color-mix(in srgb,var(--color-bad) 45%,transparent)}
+.qd *{box-sizing:border-box}
+.qd button{font:inherit;color:inherit}
+
+/* header */
+.qd .head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--cds-gap-md)}
+.qd .eyebrow{font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);letter-spacing:.06em;text-transform:uppercase;margin:0 0 var(--cds-gap-xs)}
+.qd h1{font-family:var(--font-anthropic-serif);font-weight:400;font-size:var(--cds-font-size-title);margin:0;line-height:1.1}
+.qd .sub{color:var(--color-fg-muted);margin:var(--cds-gap-xs) 0 0;font-size:var(--cds-font-size-body)}
+.qd .live{display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:2px 9px;border-radius:999px;background:var(--ok-bg);color:var(--color-ok);font-size:var(--cds-font-size-caption);font-weight:500;vertical-align:middle}
+.qd .live::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.qd .live[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.qd .live::before{animation:qdpulse 1.6s var(--cds-ease-out) infinite}}
+@keyframes qdpulse{0%{box-shadow:0 0 0 0 var(--ok-line)}100%{box-shadow:0 0 0 7px transparent}}
+
+.qd .nav{display:inline-flex;align-items:stretch;border:1px solid var(--color-border-line);border-radius:999px;overflow:hidden;background:var(--color-panel)}
+.qd .nav button,.qd .nav input{font-size:var(--cds-font-size-body);border:0;background:transparent;padding:6px 14px;cursor:pointer;color:var(--color-fg)}
+.qd .nav input{font:inherit;border-left:1px solid var(--color-border-line);border-right:1px solid var(--color-border-line);cursor:text;font-variant-numeric:tabular-nums}
+.qd .nav button:hover:not(:disabled){background:var(--color-bg)}
+.qd .nav button:disabled{opacity:.3;cursor:default}
+.qd .nav .today{border-left:1px solid var(--color-border-line);font-weight:500}
+.qd .nav .today.on{background:var(--color-fg);color:var(--color-bg)}
+
+/* status hero */
+.qd .hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:var(--cds-gap-md)}
+.qd .st-card{position:relative;text-align:left;cursor:pointer;background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-md) var(--cds-pad-lg);overflow:hidden;transition:border-color var(--cds-dur-slow),transform var(--cds-dur-slow)}
+.qd .st-card::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--c)}
+.qd .st-card:hover{transform:translateY(-1px)}
+.qd .st-card.on{border-color:var(--c);background:var(--bg)}
+.qd .st-card .lbl{display:flex;align-items:center;gap:8px;font-size:var(--cds-font-size-body);font-weight:500;color:var(--c)}
+.qd .st-card .big{font-family:var(--font-anthropic-serif);font-size:calc(var(--cds-font-size-title) * 1.35);line-height:1;margin:var(--cds-gap-sm) 0 var(--cds-gap-xs);font-variant-numeric:tabular-nums}
+.qd .st-card .of{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.qd .st-card .rule{font-size:11px;color:var(--color-fg-muted);margin-top:var(--cds-gap-sm);line-height:1.35}
+.qd .g{--c:var(--color-ok);--bg:var(--ok-bg)} .qd .y{--c:var(--color-warn);--bg:var(--warn-bg)} .qd .r{--c:var(--color-bad);--bg:var(--bad-bg)}
+
+/* kpis */
+.qd .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9.5rem),1fr));gap:1px;background:var(--color-border-line);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);overflow:hidden}
+.qd .kpi{background:var(--color-panel);padding:var(--cds-pad-md) var(--cds-pad-lg)}
+.qd .kpi .k{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+.qd .kpi .v{font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-title);font-variant-numeric:tabular-nums;margin-top:4px;line-height:1.1}
+.qd .kpi .v small{font-family:var(--font-anthropic-sans);font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+
+/* toolbar */
+.qd .toolbar{display:flex;flex-wrap:wrap;gap:var(--cds-gap-sm);align-items:center;justify-content:space-between}
+.qd .seg{display:inline-flex;padding:3px;border-radius:999px;background:var(--color-panel);border:1px solid var(--color-border-line)}
+.qd .seg button{border:0;background:transparent;padding:5px 14px;border-radius:999px;cursor:pointer;font-size:var(--cds-font-size-body);color:var(--color-fg-muted)}
+.qd .seg button.on{background:var(--color-fg);color:var(--color-bg)}
+.qd .filters{display:flex;flex-wrap:wrap;gap:var(--cds-gap-sm)}
+.qd .filters input,.qd .filters select{font:inherit;font-size:var(--cds-font-size-body);padding:6px 12px;border:1px solid var(--color-border-line);border-radius:999px;background:var(--color-panel);color:var(--color-fg)}
+.qd .filters input{min-width:12rem}
+.qd .count{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption)}
+
+/* cards */
+.qd .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,19rem),1fr));gap:var(--cds-gap-md)}
+.qd .mc{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-md) var(--cds-pad-lg);display:flex;flex-direction:column;gap:12px;border-top:3px solid var(--c)}
+.qd .mc.dim{opacity:.72}
+.qd .mc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.qd .mc-name{font-weight:600;font-size:var(--cds-font-size-body);line-height:1.25}
+.qd .mc-team{color:var(--color-fg-muted);font-size:11px;margin-top:2px}
+.qd .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-weight:500;font-size:11px;white-space:nowrap;background:var(--bg);color:var(--c)}
+.qd .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.qd .mc-time{display:flex;justify-content:space-between;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted);font-variant-numeric:tabular-nums}
+.qd .mc-time b{color:var(--color-fg);font-weight:500}
+.qd .tl{position:relative;height:8px;border-radius:4px;background:var(--color-bg)}
+.qd .tl .span{position:absolute;top:0;bottom:0;border-radius:4px;background:var(--c);opacity:.85}
+.qd .tl .fc{position:absolute;top:-3px;width:2px;height:14px;border-radius:1px;background:var(--color-fg)}
+.qd .tl-ax{display:flex;justify-content:space-between;font-size:10px;color:var(--color-fg-muted);margin-top:3px;font-variant-numeric:tabular-nums}
+.qd .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.qd .stat{background:var(--color-bg);border-radius:calc(var(--cds-radius) - 2px);padding:7px 8px}
+.qd .stat .sv{font-weight:600;font-size:var(--cds-font-size-body);font-variant-numeric:tabular-nums}
+.qd .stat .sk{font-size:10px;color:var(--color-fg-muted);margin-top:1px}
+.qd .fun{display:flex;align-items:stretch;gap:3px}
+.qd .fun > div{flex:1;text-align:center;padding:6px 2px;border-radius:4px;background:color-mix(in srgb,var(--color-fg) calc(var(--w) * 1%),transparent)}
+.qd .fun .fv{font-weight:600;font-variant-numeric:tabular-nums;font-size:var(--cds-font-size-body)}
+.qd .fun .fk{font-size:10px;color:var(--color-fg-muted)}
+.qd .fun .paid{background:var(--ok-bg)} .qd .fun .paid .fv{color:var(--color-ok)}
+.qd .mc-foot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--color-border-line);padding-top:10px;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.qd .mc-foot .money{font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-heading);color:var(--color-fg)}
+
+/* work time + hygiene */
+.qd .wt{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:calc(var(--cds-radius) - 2px);background:var(--color-bg)}
+.qd .wt-top{display:flex;justify-content:space-between;align-items:baseline;font-size:var(--cds-font-size-caption);color:var(--color-fg-muted)}
+.qd .wt-top b{font-size:var(--cds-font-size-heading);color:var(--color-fg);font-variant-numeric:tabular-nums}
+.qd .wt-top .short{color:var(--color-bad);font-weight:600}
+.qd .wt-top .full{color:var(--color-ok);font-weight:600}
+.qd .gauge{height:8px;border-radius:4px;background:color-mix(in srgb,var(--color-bad) 18%,transparent);overflow:hidden}
+.qd .gauge i{display:block;height:100%;border-radius:4px;background:var(--color-ok)}
+.qd .wt-sub{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:var(--color-fg-muted)}
+.qd .wt-sub b{color:var(--color-fg);font-weight:600}
+.qd .hyg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.qd .hyg div{text-align:center;padding:6px 2px;border-radius:4px;background:var(--color-bg);font-size:10px;color:var(--color-fg-muted);line-height:1.2}
+.qd .hyg div b{display:block;font-size:var(--cds-font-size-body);color:var(--color-fg);font-variant-numeric:tabular-nums}
+.qd .hyg div.bad{background:var(--bad-bg)} .qd .hyg div.bad b{color:var(--color-bad)}
+.qd .lx-updated{display:block;margin-top:4px;font-size:var(--cds-font-size-caption);color:rgba(255,255,255,.6)}
+
+/* period */
+.qd [data-period-hidden]{display:none!important}
+.qd .head-r{display:flex;flex-wrap:wrap;gap:var(--cds-gap-sm);align-items:center}
+.qd .pcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr));gap:var(--cds-gap-md);align-items:start}
+.qd .pcol{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--cds-radius);padding:var(--cds-pad-md)}
+.qd .pcol h3{margin:0 0 var(--cds-gap-sm);color:#fff;font-size:var(--cds-font-size-heading);font-weight:500;display:flex;align-items:center;gap:8px}
+.qd .pcol h3 b{margin-left:auto;font-family:var(--font-anthropic-serif);font-size:var(--cds-font-size-title);font-weight:400}
+.qd .pcol .dot{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.qd .plist{display:flex;flex-direction:column;gap:var(--cds-gap-sm)}
+.qd .pr{background:var(--color-panel);border-radius:calc(var(--cds-radius) - 2px);padding:var(--cds-pad-md);border-left:4px solid var(--c);display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 20px -12px rgba(20,0,0,.5)}
+.qd .pr-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.qd .pr-kv{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+.qd .pr-kv div{display:flex;flex-direction:column;font-size:10px;color:var(--color-fg-muted);line-height:1.25}
+.qd .pr-kv b{font-size:var(--cds-font-size-body);color:var(--color-fg);font-variant-numeric:tabular-nums}
+.qd .pr-kv div.bad b{color:var(--color-bad)}
+.qd .pr .rc{display:flex;flex-wrap:wrap;gap:4px}
+
+/* errors */
+.qd .errs{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:calc(var(--cds-radius) - 2px);background:var(--bad-bg);cursor:pointer;border:0;width:100%;text-align:left}
+.qd .errs.none{background:var(--ok-bg);cursor:default}
+.qd .errs .en{font-weight:600;color:var(--color-bad);font-variant-numeric:tabular-nums;white-space:nowrap}
+.qd .errs.none .en{color:var(--color-ok)}
+.qd .errs .rc{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+.qd .rchip{font-size:10px;font-weight:600;padding:1px 6px;border-radius:999px;background:#fff;color:var(--color-bad);border:1px solid var(--bad-line);font-variant-numeric:tabular-nums}
+.qd .rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:6px;margin:0 0 var(--cds-gap-md)}
+.qd .rule-b{display:flex;gap:8px;align-items:flex-start;text-align:left;padding:8px 10px;border-radius:calc(var(--cds-radius) - 2px);border:1px solid var(--color-border-line);background:var(--color-bg);cursor:pointer;font-size:var(--cds-font-size-caption);line-height:1.3}
+.qd .rule-b.on{border-color:var(--q3);background:#fff;box-shadow:inset 3px 0 0 var(--q3)}
+.qd .rule-b .code{font-weight:700;color:var(--q3);min-width:2em}
+.qd .rule-b .rn{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums;color:var(--color-fg)}
+.qd .picked{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--q2);color:#fff;border:0;cursor:pointer;font-size:var(--cds-font-size-caption);margin-bottom:var(--cds-gap-sm)}
+.qd .etw{overflow:auto;max-height:70vh}
+.qd .etab td{white-space:normal;text-align:left;vertical-align:top}
+.qd .etab td.code{font-weight:700;color:var(--q3);white-space:nowrap}
+.qd .etab a{color:var(--q3);font-weight:500;text-decoration:none;white-space:nowrap}
+.qd .etab a:hover{text-decoration:underline}
+.qd .etab th{text-align:left!important}
+
+/* timeline view */
+.qd .panel{background:var(--color-panel);border:1px solid var(--color-border-line);border-radius:var(--cds-radius);padding:var(--cds-pad-lg)}
+.qd .panel h2{font-size:var(--cds-font-size-heading);font-weight:var(--cds-font-weight-medium);margin:0}
+.qd .panel .note{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);margin:4px 0 var(--cds-gap-md)}
+.qd .gantt{position:relative;min-height:120px}
+.qd .gantt svg{display:block}
+.qd .gantt text{fill:var(--color-fg-muted);font-size:11px;font-family:var(--font-anthropic-sans)}
+.qd .gantt .nm{fill:var(--color-fg);font-size:12px}
+.qd .tip{position:absolute;pointer-events:none;background:var(--cds-surface-popover);border:1px solid var(--cds-border);border-radius:var(--cds-radius);box-shadow:var(--cds-shadow-popover);padding:var(--cds-pad-xs) var(--cds-pad-sm);font-size:var(--cds-font-size-caption);white-space:nowrap;z-index:5}
+.qd .tip .t1{color:var(--cds-text-secondary)}
+
+/* table view */
+.qd .tw{overflow:auto;max-height:72vh;border:1px solid var(--color-border-line);border-radius:var(--cds-radius);background:var(--color-panel)}
+.qd table{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--cds-font-size-caption);font-variant-numeric:tabular-nums}
+.qd thead th{position:sticky;background:var(--color-panel);white-space:nowrap;font-weight:500;color:var(--color-fg-muted);z-index:2}
+.qd thead tr.gr th{top:0;height:26px;text-align:center;font-size:10px;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--color-border-line)}
+.qd thead tr.f th{top:26px;text-align:right;padding:6px 10px;border-bottom:1px solid var(--color-border-line);cursor:pointer;user-select:none}
+.qd thead tr.f th:hover{color:var(--color-fg)}
+.qd thead tr.f th.nm,.qd thead tr.f th.l{text-align:left}
+.qd thead tr.f th[aria-sort=ascending]::after{content:" ▲";font-size:9px}
+.qd thead tr.f th[aria-sort=descending]::after{content:" ▼";font-size:9px}
+.qd td{text-align:right;padding:7px 10px;border-bottom:1px solid var(--color-border-line);white-space:nowrap}
+.qd tbody tr:hover td{background:var(--color-bg)}
+.qd .l{text-align:left!important}
+.qd .s{border-left:1px solid var(--color-border-line)}
+.qd th.nm,.qd td.nm{position:sticky;left:0;z-index:3;background:var(--color-panel);text-align:left;min-width:11rem;font-weight:500;color:var(--color-fg)}
+.qd thead th.nm{z-index:4}
+.qd tbody tr:hover td.nm{background:var(--color-bg)}
+.qd .zero{color:var(--color-fg-muted)}
+.qd [hidden]{display:none!important}
+.qd .empty{padding:var(--cds-pad-xl);text-align:center;color:var(--color-fg-muted);border:1px dashed var(--color-border-line);border-radius:var(--cds-radius)}
+.qd .foot{color:var(--color-fg-muted);font-size:var(--cds-font-size-caption);line-height:1.5}
+.qd [data-dash-source-state=empty]{color:transparent}
+.qd [data-dash-source-state=refreshing]{opacity:.5;transition:opacity var(--cds-dur-slow)}
+</style>
+
+<div class="qd">
+  <div class="head">
+    <div>
+      <p class="eyebrow">Qadam · Sotuv bo'limi</p>
+      <h1 id="top">Menejerlar kunlik ishi</h1>
+      <p class="sub"><span class="lx-day">—</span><span class="live lx-live" hidden>davom etmoqda</span></p>
+      <span class="lx-updated"></span>
+    </div>
+    <div class="head-r">
+    <div class="seg lx-period" role="tablist" aria-label="Davr">
+      <button data-p="day">Kun</button><button data-p="week">Hafta</button><button data-p="month">Oy</button>
+    </div>
+    <div class="nav" role="group" aria-label="Kun tanlash">
+      <button class="lx-prev" aria-label="Oldingi kun">‹</button>
+      <input class="lx-date" type="date" aria-label="Kun">
+      <button class="lx-next" aria-label="Keyingi kun">›</button>
+      <button class="today lx-today">Bugun</button>
+    </div>
+    </div>
+  </div>
+
+  <div class="hero" id="holat">
+    <button class="st-card g" data-st="Ishladi">
+      <div class="lbl">Ishladi</div>
+      <div class="big lx-j" data-source="kun_jami" data-field="worked">—</div>
+      <div class="of"><span class="lx-tot">—</span> menejerdan</div>
+      <div class="rule">15+ dozvon, 60+ daqiqa suhbat, 5+ soat faol</div>
+    </button>
+    <button class="st-card y" data-st="Sust">
+      <div class="lbl">Sust</div>
+      <div class="big lx-j" data-source="kun_jami" data-field="weak">—</div>
+      <div class="of"><span class="lx-tot">—</span> menejerdan</div>
+      <div class="rule lx-rule-y">Ishga chiqqan, lekin me'yorga yetmagan</div>
+    </button>
+    <button class="st-card r" data-st="Ishlamadi">
+      <div class="lbl">Ishlamadi</div>
+      <div class="big lx-j" data-source="kun_jami" data-field="absent">—</div>
+      <div class="of"><span class="lx-tot">—</span> menejerdan</div>
+      <div class="rule lx-rule-r">10 tadan kam zvonok va CRM harakat</div>
+    </button>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k">To'lovlar</div><div class="v lx-j" data-source="kun_jami" data-field="paid">—</div></div>
+    <div class="kpi"><div class="k">To'lov summasi</div><div class="v"><span class="lx-j" data-source="kun_jami" data-field="paid_sum">—</span><small> so'm</small></div></div>
+    <div class="kpi"><div class="k">Yangi lid</div><div class="v lx-j" data-source="kun_jami" data-field="new_leads">—</div></div>
+    <div class="kpi"><div class="k">Dozvon / zvonok</div><div class="v"><span class="lx-j" data-source="kun_jami" data-field="connected">—</span><small> / <span class="lx-j" data-source="kun_jami" data-field="calls">—</span></small></div></div>
+    <div class="kpi"><div class="k">O'rtacha faol vaqt</div><div class="v"><span class="lx-j" data-source="kun_jami" data-field="avg_active">—</span><small> / 8 soat</small></div></div>
+    <div class="kpi"><div class="k">Kamchiliklar</div><div class="v" style="color:var(--color-bad)"><span class="lx-j" data-source="kun_jami" data-field="err">—</span></div></div>
+    <div class="kpi"><div class="k">Jami suhbat</div><div class="v"><span class="lx-j" data-source="kun_jami" data-field="talk_hours">—</span><small> soat</small></div></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="seg" role="tablist" aria-label="Ko'rinish">
+      <button data-view="cards" role="tab">Kartochkalar</button>
+      <button data-view="time" role="tab">Ish vaqti</button>
+      <button data-view="errors" role="tab">Kamchiliklar</button>
+      <button data-view="table" role="tab">Jadval</button>
+    </div>
+    <div class="filters">
+      <input class="lx-q" type="search" placeholder="Ism bo'yicha qidirish" aria-label="Qidirish">
+      <select class="lx-team" aria-label="Bo'lim"></select>
+      <select class="lx-sort" aria-label="Saralash">
+        <option value="status:1">Holat bo'yicha</option>
+        <option value="paid:-1">To'lov ko'p</option>
+        <option value="connected:-1">Dozvon ko'p</option>
+        <option value="talk_min:-1">Suhbat ko'p</option>
+        <option value="arrived:1">Erta kelgan</option>
+        <option value="err:-1">Xato ko'p</option>
+        <option value="short_hours:-1">Eng kam ishlagan</option>
+        <option value="overdue_tasks:-1">Muddati o'tgan vazifa ko'p</option>
+        <option value="manager:1">Ism (A–Я)</option>
+      </select>
+    </div>
+  </div>
+  <div class="count lx-count"></div>
+
+  <section id="davr" class="v-period" hidden>
+    <div class="pcols">
+      <div class="pcol r"><h3><span class="dot"></span>Ishlamayapti <b class="lx-pc-r">—</b></h3><div class="plist lx-pl-r"></div></div>
+      <div class="pcol y"><h3><span class="dot"></span>Nazoratda <b class="lx-pc-y">—</b></h3><div class="plist lx-pl-y"></div></div>
+      <div class="pcol g"><h3><span class="dot"></span>Ishlayapti <b class="lx-pc-g">—</b></h3><div class="plist lx-pl-g"></div></div>
+    </div>
+    <p class="foot"><b>Ishlayapti</b> — davr kunlarining 70%+ qismida "Ishladi" holati, o'rtacha 6+ soat faol va kuniga 5 tadan kam kamchilik. <b>Ishlamayapti</b> — "Ishladi" kunlari 40% dan kam yoki o'rtacha faollik 4 soatdan kam. Qolganlari — <b>Nazoratda</b>. Gigiyena ko'rsatkichlari davrning oxirgi kunidagi holat.</p>
+  </section>
+
+  <section id="kartochkalar" class="v-cards">
+    <div class="cards lx-cards" data-source="kun"></div>
+  </section>
+
+  <section id="ish-vaqti" class="v-time panel" hidden>
+    <h2>Kim nechida keldi va ketdi</h2>
+    <p class="note">Chiziq — birinchi va oxirgi harakat oralig'i, rangi — holat. Qora belgi — birinchi qo'ng'iroq.</p>
+    <div class="gantt lx-gantt" data-source="kun"></div>
+  </section>
+
+  <section id="kamchiliklar" class="v-errors panel" hidden>
+    <h2>Reglament bo'yicha kamchiliklar</h2>
+    <p class="note">Qoidani bosing — faqat o'sha xatolar qoladi. Lid raqamini bosib amoCRM'da oching. "Sabab noto'g'ri" — menejer aldagan degani emas: suhbat Telegram yoki shaxsiy telefonda bo'lgan bo'lishi mumkin.</p>
+    <div class="rules lx-rules"></div>
+    <button class="picked lx-picked" hidden></button>
+    <div class="etw tw">
+      <table class="etab lx-etab" data-source="xatolar" data-row-key="day,lead_id,rule">
+        <thead><tr class="f">
+          <th data-field="manager" class="nm">Menejer</th>
+          <th data-field="rule">Qoida</th>
+          <th data-field="problem">Muammo</th>
+          <th data-field="lead_id">Lid</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="jadval" class="v-table" hidden>
+    <div class="tw">
+      <table class="lx-table" data-source="kun" data-row-key="day,manager">
+        <thead>
+          <tr class="gr">
+            <th class="nm"></th><th></th>
+            <th colspan="7" class="s">Ish vaqti (8 soat me'yor)</th>
+            <th colspan="4" class="s">Voronka</th>
+            <th colspan="3" class="s">Счет</th>
+            <th colspan="4" class="s">To'lov</th>
+            <th colspan="4" class="s">Qo'ng'iroqlar</th>
+            <th class="s"></th><th class="s"></th>
+            <th colspan="4" class="s">Gigiyena (hozirgi holat)</th>
+          </tr>
+          <tr class="f">
+            <th data-field="manager" class="nm">Menejer</th>
+            <th data-field="status" class="l">Holat</th>
+            <th data-field="arrived" class="s">Keldi</th>
+            <th data-field="left">Ketdi</th>
+            <th data-field="active_hours">Faol soat</th>
+            <th data-field="short_hours">8 dan kam</th>
+            <th data-field="idle_hours">Bo'sh soat</th>
+            <th data-field="longest_gap_min">Eng uzun tanaffus, daq</th>
+            <th data-field="gaps_30">30+ daq tanaffus</th>
+            <th data-field="new_leads" class="s">Yangi lid</th>
+            <th data-field="taken">Взято</th>
+            <th data-field="qualified">Квал</th>
+            <th data-field="cr_qual">CR квал</th>
+            <th data-field="invoiced" class="s">Soni</th>
+            <th data-field="invoiced_sum">Summa</th>
+            <th data-field="cr_inv_qual">CR из квала</th>
+            <th data-field="paid" class="s">Soni</th>
+            <th data-field="cr_paid_new">CR из новых</th>
+            <th data-field="cr_paid_qual">CR из квала</th>
+            <th data-field="paid_sum">Summa</th>
+            <th data-field="calls" class="s">Zvonok</th>
+            <th data-field="connected">Dozvon</th>
+            <th data-field="talk_min">Suhbat, daq</th>
+            <th data-field="first_call">1-zvonok</th>
+            <th data-field="closed" class="s">Закрыто</th>
+            <th data-field="err" class="s">Xato</th>
+            <th data-field="overdue_tasks" class="s">Muddati o'tgan vazifa</th>
+            <th data-field="leads_no_task">Vazifasiz lid</th>
+            <th data-field="ojop_stale">ОЖОП 7+ kun</th>
+            <th data-field="new_untaken">Olinmagan lid</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="foot">Qo'ng'iroqlar — onlinePBX'dan (dozvon = haqiqiy suhbat bo'lgan qo'ng'iroq, gudok hisoblanmaydi). Lid, bosqich va to'lovlar — amoCRM'dan: o'sha kuni shu bosqichga o'tgan lidlar; Счет = ОЖОП yoki Оформление, To'lov = Часть оплачена yoki Успешно. Kun Toshkent vaqti bilan 05:00 dan 05:00 gacha.</p>
+</div>
+
+<script>
+dash.calc('kun', {
+  inputs: ['kunlik', 'xatolar'],
+  title: 'Har kun × menejer',
+  description: "Har bir kun va menejer: ko'rsatkichlar, CR, holat va reglament xatolari soni; o'sha kuni hech narsa qilmagan menejer ham 0 bilan chiqadi. Oxirgi (tugamagan) kunda me'yorga hali yetmaganlar 'Ishda' yoki 'Hali kelmagan' deb ko'rinadi.",
+  fn: (kunlik, xatolar) => {
+    const n = (v) => Number(v) || 0;
+    const days = [...new Set(kunlik.map((r) => r.day))].sort();
+    const ec = {};
+    for (const e of xatolar) { if (/^G/.test(e.rule)) continue; const k = e.day + '|' + e.manager; const o = ec[k] = ec[k] || { err: 0 }; o.err++; o[e.rule] = (o[e.rule] || 0) + 1; }
+    const team = {};
+    for (const r of kunlik) team[r.manager] = r.team;
+    const by = {};
+    for (const r of kunlik) by[r.day + '|' + r.manager] = r;
+    const pct = (a, b) => (b > 0 ? a / b : null);
+    const out = [];
+    for (const day of days) for (const manager of Object.keys(team)) {
+      const r = by[day + '|' + manager] || {};
+      const calls = n(r.calls), connected = n(r.connected), talk = n(r.talk_min), act = n(r.active_hours), crm = n(r.crm_actions);
+      const nl = n(r.new_leads), q = n(r.qualified), inv = n(r.invoiced), paid = n(r.paid);
+      const bucket = calls < 10 && crm < 10 ? 'Ishlamadi' : (connected >= 15 && talk >= 60 && act >= 5 ? 'Ishladi' : 'Sust');
+      const live = day === days[days.length - 1];
+      const status = live && bucket !== 'Ishladi' ? (calls + crm > 0 ? 'Ishda' : 'Hali kelmagan') : bucket;
+      out.push({ day, manager, team: team[manager], status, bucket, arrived: r.arrived || '', left: r.left || '', active_hours: act,
+        new_leads: nl, taken: n(r.taken), qualified: q, cr_qual: pct(q, nl), invoiced: inv, invoiced_sum: n(r.invoiced_sum),
+        cr_inv_qual: pct(inv, q), paid, cr_paid_new: pct(paid, nl), cr_paid_qual: pct(paid, q), paid_sum: n(r.paid_sum),
+        calls, connected, talk_min: talk, first_call: r.first_call || '', closed: n(r.closed),
+        span_hours: n(r.span_hours), idle_hours: n(r.idle_hours), short_hours: r.short_hours === undefined ? Math.max(0, 8 - act) : n(r.short_hours), work_norm: n(r.work_norm) || 8,
+        longest_gap_min: n(r.longest_gap_min), gaps_30: n(r.gaps_30),
+        overdue_tasks: n(r.overdue_tasks), open_leads: n(r.open_leads), leads_no_task: n(r.leads_no_task), ojop_stale: n(r.ojop_stale), new_untaken: n(r.new_untaken),
+        err: (ec[day + '|' + manager] || {}).err || 0,
+        err_rules: Object.entries(ec[day + '|' + manager] || {}).filter(([k2]) => k2 !== 'err').sort((a2, b2) => b2[1] - a2[1]).map(([k2, v2]) => k2 + ':' + v2).join(' ') });
+    }
+    return out;
+  },
+});
+
+dash.calc('kun_jami', {
+  inputs: ['kun'],
+  title: "Kun bo'yicha jami",
+  description: "Har kun: nechta menejer ishladi / sust / ishlamadi, jami yangi lid, to'lov, summa, zvonok, dozvon, suhbat soati va xatolar.",
+  fn: (kun) => {
+    const by = {};
+    for (const r of kun) {
+      const d = by[r.day] = by[r.day] || { day: r.day, worked: 0, weak: 0, absent: 0, new_leads: 0, paid: 0, paid_sum: 0, calls: 0, connected: 0, talk_min: 0, err: 0 };
+      if (r.bucket === 'Ishladi') d.worked++; else if (r.bucket === 'Sust') d.weak++; else d.absent++;
+      d.new_leads += r.new_leads; d.paid += r.paid; d.paid_sum += r.paid_sum; d.calls += r.calls; d.connected += r.connected; d.talk_min += r.talk_min; d.err += r.err;
+    }
+    const act = {};
+    for (const r of kun) if (r.bucket !== 'Ishlamadi') { const a = act[r.day] = act[r.day] || [0, 0]; a[0] += r.active_hours; a[1]++; }
+    return Object.values(by).map((d) => ({ ...d, talk_hours: Math.round(d.talk_min / 6) / 10, avg_active: act[d.day] ? Math.round(act[d.day][0] / act[d.day][1] * 10) / 10 : 0 }));
+  },
+});
+
+(() => {
+  const root = document.querySelector('.qd');
+  const $ = (s) => root.querySelector(s);
+  const dateIn = $('.lx-date'), prev = $('.lx-prev'), next = $('.lx-next'), todayBtn = $('.lx-today');
+  const teamSel = $('.lx-team'), q = $('.lx-q'), sortSel = $('.lx-sort');
+  const cardsEl = $('.lx-cards'), ganttEl = $('.lx-gantt'), table = $('.lx-table'), tbody = table.querySelector('tbody');
+  const fmt = d3.format(',');
+  const num = (v) => fmt(v).replace(/,/g, ' ');
+  const big = (v) => (v >= 1e6 ? d3.format('.1f')(v / 1e6).replace('.0', '') + ' mln' : num(v));
+  const pct = (v) => (v == null ? '—' : d3.format('.0%')(v));
+  const order = { Ishlamadi: 0, Sust: 1, Ishladi: 2 };
+  const cls = { Ishladi: 'g', Sust: 'y', Ishlamadi: 'r' };
+  const months = ['yanvar','fevral','mart','aprel','may','iyun','iyul','avgust','sentabr','oktabr','noyabr','dekabr'];
+  const wdays = ['yakshanba','dushanba','seshanba','chorshanba','payshanba','juma','shanba'];
+  const label = (d) => { const [y, m, x] = d.split('-').map(Number); return x + '-' + months[m - 1] + ', ' + wdays[new Date(Date.UTC(y, m - 1, x)).getUTCDay()]; };
+  const mins = (s) => { if (!s) return null; const [h, m] = s.split(':').map(Number); const v = h * 60 + m; return v < 300 ? v + 1440 : v; };
+  const T0 = 7 * 60, T1 = 25 * 60;
+  const xpct = (m) => Math.max(0, Math.min(100, (m - T0) / (T1 - T0) * 100));
+  let days = [];
+  const RULES = {
+    R1: "NDZ, lekin 6 tadan kam qo'ng'iroq",
+    R2: "NDZ qo'yilgan, lekin gaplashilgan (60+ s)",
+    R3: "6+ daqiqa suhbat, lekin Квал qilinmagan",
+    R4: "Yopilish izohi bo'sh yoki ma'nosiz",
+    R5: "Yopilish sababi tanlanmagan",
+    R6: "Yangi lidga kech yoki umuman qo'ng'iroq yo'q",
+    R7: "Suhbat talab qiladigan sabab qo'ng'iroqsiz",
+    R8: "Noto'g'ri raqam, lekin gaplashilgan",
+    R9: "Konsultatsiyadan keyin NDZ, lekin konsultatsiya yo'q",
+    G1: "Muddati o'tgan vazifa",
+    G2: "Ochiq lid, vazifa qo'yilmagan",
+    G3: "ОЖОП'da 7+ kun harakatsiz",
+    G4: "Yangi lid 1+ soat olinmagan",
+  };
+  const etbody = $('.lx-etab tbody'), rulesEl = $('.lx-rules'), pickedBtn = $('.lx-picked');
+  pickedBtn.addEventListener('click', () => dash.setParams({ err_m: null }));
+
+  const P = () => dash.params();
+  const curDay = () => { const p = P().day; return p && days.includes(p) ? p : days[days.length - 1]; };
+  const view = () => P().view || 'cards';
+  const go = (d) => { if (d) dash.setParams({ day: d }); };
+  prev.addEventListener('click', () => go(days[days.indexOf(curDay()) - 1]));
+  next.addEventListener('click', () => go(days[days.indexOf(curDay()) + 1]));
+  todayBtn.addEventListener('click', () => dash.setParams({ day: null }));
+  dateIn.addEventListener('change', () => { if (dateIn.value && dateIn.validity.valid && days.includes(dateIn.value)) go(dateIn.value); });
+  dateIn.addEventListener('blur', () => { if (days.length) dateIn.value = curDay(); });
+  teamSel.addEventListener('change', () => dash.setParams({ team: teamSel.value || null }));
+  sortSel.addEventListener('change', () => dash.setParams({ _sort: sortSel.value }));
+  q.addEventListener('input', () => dash.setParams({ _q: q.value.trim().toLowerCase() || null }));
+  root.querySelectorAll('.st-card').forEach((c) => c.addEventListener('click', () => dash.setParams({ status: P().status === c.dataset.st ? null : c.dataset.st })));
+  root.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => { dash.setParams({ view: b.dataset.view }); dash.setLink({ cards: 'kartochkalar', time: 'ish-vaqti', table: 'jadval', errors: 'kamchiliklar' }[b.dataset.view]); }));
+  table.querySelector('thead').addEventListener('click', (e) => {
+    const th = e.target.closest('tr.f th[data-field]');
+    if (!th) return;
+    const k = th.dataset.field;
+    const [ck, cd] = (P()._sort || 'status:1').split(':');
+    const asc = ['manager', 'status', 'arrived', 'left', 'first_call'].includes(k);
+    dash.setParams({ _sort: k + ':' + (ck === k ? -Number(cd) : (asc ? 1 : -1)) });
+  });
+
+  const el = (tag, className, text) => { const e = document.createElement(tag); if (className) e.className = className; if (text != null) e.textContent = text; return e; };
+  const mark = (e, x, field) => { e.setAttribute('data-source', 'kun'); e.setAttribute('data-field', field); e.setAttribute('data-where', 'day=' + encodeURIComponent(x.day) + '&manager=' + encodeURIComponent(x.manager)); return e; };
+
+  const card = (x) => {
+    const c = el('article', 'mc ' + cls[x.bucket] + (x.bucket === 'Ishlamadi' ? ' dim' : ''));
+    const top = el('div', 'mc-top');
+    const who = el('div');
+    who.append(mark(el('div', 'mc-name', x.manager), x, 'manager'), el('div', 'mc-team', x.team));
+    top.append(who, mark(el('span', 'pill', x.status), x, 'status'));
+    c.appendChild(top);
+
+    const time = el('div', 'mc-time');
+    const a = el('span'); a.append('Keldi ', mark(el('b', '', x.arrived || '—'), x, 'arrived'));
+    const h = el('span'); h.append(mark(el('b', '', x.active_hours ? d3.format('.2~f')(x.active_hours) : '0'), x, 'active_hours'), ' soat faol');
+    const l = el('span'); l.append('Ketdi ', mark(el('b', '', x.left || '—'), x, 'left'));
+    time.append(a, h, l);
+    c.appendChild(time);
+    const tl = el('div', 'tl');
+    const ma = mins(x.arrived), ml = mins(x.left), mf = mins(x.first_call);
+    if (ma != null && ml != null) { const s = el('div', 'span'); s.style.left = xpct(ma) + '%'; s.style.width = Math.max(1, xpct(ml) - xpct(ma)) + '%'; tl.appendChild(s); }
+    if (mf != null) { const f = el('div', 'fc'); f.style.left = xpct(mf) + '%'; f.title = '1-zvonok ' + x.first_call; tl.appendChild(f); }
+    const ax = el('div', 'tl-ax'); ['07', '10', '13', '16', '19', '22', '01'].forEach((t) => ax.appendChild(el('span', '', t)));
+    const tlw = el('div'); tlw.append(tl, ax);
+    c.appendChild(tlw);
+
+    const wt = el('div', 'wt');
+    const norm = x.work_norm || 8;
+    const wtop = el('div', 'wt-top');
+    const wl = el('span'); wl.append(mark(el('b', '', d3.format('.1f')(x.active_hours)), x, 'active_hours'), ' / ' + norm + ' soat faol');
+    const wr = x.short_hours > 0 ? el('span', 'short', d3.format('.1f')(x.short_hours) + ' soat kam') : el('span', 'full', "me'yor bajarildi");
+    mark(wr, x, 'short_hours');
+    wtop.append(wl, wr);
+    const g = el('div', 'gauge'); const gi = el('i'); gi.style.width = Math.min(100, x.active_hours / norm * 100) + '%'; g.appendChild(gi);
+    const ws = el('div', 'wt-sub');
+    const sub = (label, v, f) => { const sp = el('span'); sp.append(label + ' ', mark(el('b', '', v), x, f)); ws.appendChild(sp); };
+    sub("Bo'sh:", d3.format('.1f')(x.idle_hours) + ' soat', 'idle_hours');
+    sub('Eng uzun tanaffus:', x.longest_gap_min ? num(x.longest_gap_min) + ' daq' : '—', 'longest_gap_min');
+    sub('30+ daq tanaffus:', num(x.gaps_30), 'gaps_30');
+    wt.append(wtop, g, ws);
+    c.appendChild(wt);
+
+    const hy = el('div', 'hyg');
+    [['overdue_tasks', "muddati o'tgan vazifa"], ['leads_no_task', 'vazifasiz lid'], ['ojop_stale', 'ОЖОП 7+ kun'], ['new_untaken', 'olinmagan lid']].forEach(([f, k]) => {
+      const dv = el('div', x[f] ? 'bad' : ''); dv.append(mark(el('b', '', num(x[f])), x, f), k); hy.appendChild(dv);
+    });
+    c.appendChild(hy);
+
+    const st = el('div', 'stats');
+    [['calls', 'zvonok', num(x.calls)], ['connected', 'dozvon', num(x.connected)], ['talk_min', 'suhbat, daq', num(x.talk_min)], ['first_call', '1-zvonok', x.first_call || '—']].forEach(([f, k, v]) => {
+      const s = el('div', 'stat'); s.append(mark(el('div', 'sv', v), x, f), el('div', 'sk', k)); st.appendChild(s);
+    });
+    c.appendChild(st);
+
+    const fun = el('div', 'fun');
+    const mx = Math.max(1, x.new_leads, x.taken, x.qualified, x.invoiced, x.paid);
+    [['new_leads', 'lid'], ['taken', 'взято'], ['qualified', 'квал'], ['invoiced', 'счет'], ['paid', "to'lov"]].forEach(([f, k]) => {
+      const d = el('div', f === 'paid' && x.paid ? 'paid' : '');
+      d.style.setProperty('--w', String(Math.round(4 + (x[f] / mx) * 10)));
+      d.append(mark(el('div', 'fv', num(x[f])), x, f), el('div', 'fk', k));
+      fun.appendChild(d);
+    });
+    c.appendChild(fun);
+
+    const eb = el('button', 'errs' + (x.err ? '' : ' none'));
+    const en = el('span', 'en'); en.append(mark(el('span', '', num(x.err)), x, 'err'), x.err ? ' ta kamchilik' : ' — kamchilik yo\'q');
+    eb.appendChild(en);
+    if (x.err) {
+      const rc = el('span', 'rc');
+      x.err_rules.split(' ').filter(Boolean).slice(0, 4).forEach((p) => { const [c2, v2] = p.split(':'); const ch = el('span', 'rchip', c2 + ' ×' + v2); ch.title = RULES[c2] || ''; rc.appendChild(ch); });
+      eb.appendChild(rc);
+      eb.title = "Kamchiliklar ro'yxatini ochish";
+      eb.addEventListener('click', () => { dash.setParams({ view: 'errors', err_m: x.manager }); dash.setLink('kamchiliklar'); });
+    }
+    c.appendChild(eb);
+
+    const foot = el('div', 'mc-foot');
+    const left = el('span'); left.append('CR квал ', mark(el('b', '', pct(x.cr_qual)), x, 'cr_qual'), ' · закрыто ', mark(el('b', '', num(x.closed)), x, 'closed'));
+    const right = el('span'); right.append(mark(el('span', 'money', x.paid_sum ? big(x.paid_sum) : '0'), x, 'paid_sum'), ' so\'m');
+    foot.append(left, right);
+    c.appendChild(foot);
+    return c;
+  };
+
+  const drawGantt = (list) => {
+    ganttEl.replaceChildren();
+    const W = Math.max(320, ganttEl.clientWidth);
+    const rowH = 26, top = 24;
+    const tmp = d3.select(ganttEl).append('svg').attr('width', 0).attr('height', 0);
+    let lw = 0;
+    list.forEach((x) => { const t = tmp.append('text').attr('class', 'nm').text(x.manager); lw = Math.max(lw, t.node().getComputedTextLength()); });
+    tmp.remove();
+    const ml = Math.min(lw + 14, W * 0.42), mr = 12;
+    const H = top + list.length * rowH + 6;
+    const x = d3.scaleLinear([T0, T1], [ml, W - mr]);
+    const svg = d3.select(ganttEl).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    const ticks = d3.range(T0, T1 + 1, W < 520 ? 180 : 60);
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', x).attr('x2', x).attr('y1', top - 6).attr('y2', H).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text').attr('x', x).attr('y', 12).attr('text-anchor', 'middle').text((m) => String(Math.floor(m / 60) % 24).padStart(2, '0') + ':00');
+    const tip = d3.select(ganttEl).append('div').attr('class', 'tip').style('display', 'none');
+    const g = svg.append('g').selectAll('g').data(list).join('g').attr('transform', (d, i) => `translate(0,${top + i * rowH})`);
+    g.append('text').attr('class', 'nm').attr('x', ml - 10).attr('y', rowH / 2 + 4).attr('text-anchor', 'end').text((d) => {
+      return d.manager;
+    });
+    g.append('rect').attr('x', ml).attr('y', rowH / 2 - 1).attr('width', W - mr - ml).attr('height', 2).attr('fill', 'var(--color-bg)');
+    g.filter((d) => mins(d.arrived) != null && mins(d.left) != null).append('rect')
+      .attr('x', (d) => x(Math.max(T0, mins(d.arrived)))).attr('y', 6).attr('height', rowH - 12).attr('rx', 4)
+      .attr('width', (d) => Math.max(4, x(Math.min(T1, mins(d.left))) - x(Math.max(T0, mins(d.arrived)))))
+      .attr('fill', (d) => ({ Ishladi: 'var(--color-ok)', Sust: 'var(--color-warn)', Ishlamadi: 'var(--color-bad)' }[d.bucket])).attr('opacity', 0.8);
+    g.filter((d) => mins(d.first_call) != null).append('rect').attr('x', (d) => x(mins(d.first_call)) - 1).attr('y', 3).attr('width', 2).attr('height', rowH - 6).attr('rx', 1).attr('fill', 'var(--color-fg)');
+    g.append('rect').attr('x', 0).attr('y', 0).attr('width', W).attr('height', rowH).attr('fill', 'transparent')
+      .on('mousemove', (ev, d) => {
+        const [px, py] = d3.pointer(ev, ganttEl);
+        tip.style('display', 'block'); tip.node().replaceChildren();
+        tip.append('div').attr('class', 't1').text(d.manager + ' · ' + d.status);
+        tip.append('div').text(`Keldi ${d.arrived || '—'} · Ketdi ${d.left || '—'} · ${d3.format('.2~f')(d.active_hours)} soat faol`);
+        tip.append('div').text(`1-zvonok ${d.first_call || '—'} · ${num(d.calls)} zvonok · ${num(d.connected)} dozvon · ${num(d.talk_min)} daq`);
+        const tw = tip.node().offsetWidth;
+        tip.style('left', Math.min(px + 12, ganttEl.clientWidth - tw - 4) + 'px').style('top', (py + 14) + 'px');
+      })
+      .on('mouseleave', () => tip.style('display', 'none'));
+  };
+
+  const drawTable = (list) => {
+    tbody.replaceChildren(...list.map((x) => {
+      const tr = el('tr');
+      tr.dataset.key = encodeURIComponent(x.day) + ',' + encodeURIComponent(x.manager);
+      const td = (t, c) => { const e = el('td', c || '', null); if (t instanceof Node) e.appendChild(t); else e.textContent = t; return e; };
+      const z = (v, f = num) => [v ? f(v) : '0', v ? '' : 'zero'];
+      const add = (v, c = '', f = num) => { const [s, k] = z(v, f); tr.appendChild(td(s, [c, k].filter(Boolean).join(' '))); };
+      tr.appendChild(td(x.manager, 'nm'));
+      const pill = el('span', 'pill ' + cls[x.bucket], x.status);
+      tr.appendChild(td(pill, 'l'));
+      tr.appendChild(td(x.arrived || '—', 's' + (x.arrived ? '' : ' zero')));
+      tr.appendChild(td(x.left || '—', x.left ? '' : 'zero'));
+      tr.appendChild(td(x.active_hours ? d3.format('.2~f')(x.active_hours) : '0', x.active_hours ? '' : 'zero'));
+      const sh = td(d3.format('.1f')(x.short_hours), ''); if (x.short_hours > 0) sh.style.color = 'var(--color-bad)'; tr.appendChild(sh);
+      tr.appendChild(td(d3.format('.1f')(x.idle_hours), x.idle_hours ? '' : 'zero'));
+      add(x.longest_gap_min); add(x.gaps_30);
+      add(x.new_leads, 's'); add(x.taken); add(x.qualified);
+      tr.appendChild(td(pct(x.cr_qual), x.cr_qual == null ? 'zero' : ''));
+      add(x.invoiced, 's'); add(x.invoiced_sum);
+      tr.appendChild(td(pct(x.cr_inv_qual), x.cr_inv_qual == null ? 'zero' : ''));
+      add(x.paid, 's');
+      tr.appendChild(td(pct(x.cr_paid_new), x.cr_paid_new == null ? 'zero' : ''));
+      tr.appendChild(td(pct(x.cr_paid_qual), x.cr_paid_qual == null ? 'zero' : ''));
+      add(x.paid_sum);
+      add(x.calls, 's'); add(x.connected); add(x.talk_min);
+      tr.appendChild(td(x.first_call || '—', x.first_call ? '' : 'zero'));
+      add(x.closed, 's');
+      const ec = td(x.err ? num(x.err) : '0', 's' + (x.err ? '' : ' zero')); if (x.err) ec.style.color = 'var(--color-bad)'; ec.style.fontWeight = x.err ? '600' : ''; tr.appendChild(ec);
+      add(x.overdue_tasks, 's'); add(x.leads_no_task); add(x.ojop_stale); add(x.new_untaken);
+      return tr;
+    }));
+  };
+
+  const drawErrors = (day, list) => {
+    const xs = dash.data('xatolar');
+    if (xs.status !== 'ok') { etbody.replaceChildren(); rulesEl.replaceChildren(); return; }
+    const p = P();
+    const allowed = new Set(list.map((x) => x.manager));
+    const em = p.err_m && allowed.has(p.err_m) ? p.err_m : (p.err_m || null);
+    pickedBtn.hidden = !em; pickedBtn.textContent = em ? em + '  ×' : '';
+    const base = xs.data.filter((e) => e.day === day && allowed.has(e.manager) && (!em || e.manager === em));
+    const rc = {}; base.forEach((e) => { rc[e.rule] = (rc[e.rule] || 0) + 1; });
+    const rsel = p.err_r || '';
+    rulesEl.replaceChildren(...Object.keys(RULES).map((c2) => {
+      const b = el('button', 'rule-b' + (rsel === c2 ? ' on' : ''));
+      b.append(el('span', 'code', c2), el('span', '', RULES[c2]), el('span', 'rn', num(rc[c2] || 0)));
+      b.addEventListener('click', () => dash.setParams({ err_r: rsel === c2 ? null : c2 }));
+      return b;
+    }));
+    const rows = base.filter((e) => !rsel || e.rule === rsel).sort((a, b) => a.manager.localeCompare(b.manager) || a.rule.localeCompare(b.rule));
+    if (!rows.length) { const tr = el('tr'); const c2 = el('td', 'zero', "Bu kun uchun kamchilik topilmadi"); c2.colSpan = 4; tr.appendChild(c2); etbody.replaceChildren(tr); return; }
+    etbody.replaceChildren(...rows.slice(0, 1500).map((e) => {
+      const tr = el('tr');
+      tr.dataset.key = [e.day, e.lead_id, e.rule].map((v2) => encodeURIComponent(v2)).join(',');
+      tr.appendChild(el('td', 'nm', e.manager));
+      tr.appendChild(el('td', 'code', e.rule));
+      tr.appendChild(el('td', '', e.problem));
+      const td = el('td'); const a = el('a', '', String(e.lead_id)); a.href = 'https://qadamsales.amocrm.ru/leads/detail/' + e.lead_id; a.target = '_blank'; a.rel = 'noopener'; td.appendChild(a); tr.appendChild(td);
+      return tr;
+    }));
+  };
+
+  dash.onData(() => {
+    const p = P();
+    const k = dash.data('kun'), j = dash.data('kun_jami');
+    const v = view();
+    root.querySelectorAll('.seg button').forEach((b) => { b.classList.toggle('on', b.dataset.view === v); b.setAttribute('aria-selected', b.dataset.view === v); });
+    $('.v-cards').hidden = v !== 'cards'; $('.v-time').hidden = v !== 'time'; $('.v-table').hidden = v !== 'table'; $('.v-errors').hidden = v !== 'errors';
+    const [sk, sd] = (p._sort || 'status:1').split(':'); const sortKey = sk, sortDir = Number(sd) || 1;
+    if ([...sortSel.options].some((o) => o.value === sortKey + ':' + sortDir)) sortSel.value = sortKey + ':' + sortDir;
+    table.querySelectorAll('tr.f th').forEach((th) => th.setAttribute('aria-sort', th.dataset.field === sortKey ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'));
+
+    if (k.status !== 'ok') { cardsEl.replaceChildren(); tbody.replaceChildren(); ganttEl.replaceChildren(); etbody.replaceChildren(); return; }
+    const rows = k.data;
+    days = [...new Set(rows.map((r) => r.day))].sort();
+    const day = curDay(), last = days[days.length - 1];
+    dateIn.min = days[0]; dateIn.max = last;
+    if (dateIn !== document.activeElement) dateIn.value = day;
+    prev.disabled = days.indexOf(day) <= 0; next.disabled = day === last;
+    todayBtn.classList.toggle('on', day === last);
+    $('.lx-day').textContent = label(day);
+    $('.lx-live').hidden = day !== last;
+    $('.lx-rule-y').textContent = day === last ? "Ishda, lekin me'yorga hali yetmagan" : "Ishga chiqqan, lekin me'yorga yetmagan";
+    $('.lx-rule-r').textContent = day === last ? "Hali kelmagan yoki deyarli ishlamagan" : "10 tadan kam zvonok va CRM harakat";
+
+    const teams = [...new Set(rows.map((r) => r.team))].filter(Boolean).sort();
+    teamSel.replaceChildren(new Option("Barcha bo'limlar", ''), ...teams.map((t) => new Option(t, t)));
+    teamSel.value = teams.includes(p.team) ? p.team : '';
+    if (q !== document.activeElement) q.value = p._q || '';
+    const query = (p._q || '').toLowerCase();
+    const st = p.status || '';
+    root.querySelectorAll('.st-card').forEach((c) => c.classList.toggle('on', c.dataset.st === st));
+
+    const d = j.status === 'ok' ? j.data.find((x) => x.day === day) : null;
+    root.querySelectorAll('.lx-j').forEach((e) => {
+      e.setAttribute('data-where', 'day=' + encodeURIComponent(day));
+      const f = e.dataset.field;
+      e.textContent = d ? (f === 'paid_sum' ? big(d[f]) : (f === 'talk_hours' || f === 'avg_active') ? d3.format('.1f')(d[f]) : num(d[f])) : '—';
+    });
+    const tot = d ? d.worked + d.weak + d.absent : 0;
+    root.querySelectorAll('.lx-tot').forEach((e) => { e.textContent = tot ? num(tot) : '—'; });
+
+    const list = rows.filter((x) => x.day === day && (!teamSel.value || x.team === teamSel.value) && (!st || x.bucket === st) && (!query || x.manager.toLowerCase().includes(query)));
+    list.sort((a, b) => {
+      let x1 = a[sortKey], y1 = b[sortKey];
+      if (sortKey === 'status') { x1 = order[a.bucket]; y1 = order[b.bucket]; }
+      if (['arrived', 'left', 'first_call'].includes(sortKey)) { x1 = mins(x1); y1 = mins(y1); }
+      const blank = sortDir > 0 ? Infinity : -Infinity;
+      if (x1 == null || x1 === '') x1 = blank;
+      if (y1 == null || y1 === '') y1 = blank;
+      if (x1 < y1) return -sortDir;
+      if (x1 > y1) return sortDir;
+      return b.paid - a.paid || b.connected - a.connected || a.manager.localeCompare(b.manager);
+    });
+    $('.lx-count').textContent = list.length + ' ta menejer' + (st ? ' · ' + st : '') + (teamSel.value ? ' · ' + teamSel.value : '');
+
+    if (v === 'cards') {
+      cardsEl.replaceChildren(...(list.length ? list.map(card) : [el('div', 'empty', "Bu filtr bo'yicha menejer yo'q")]));
+    } else if (v === 'time') {
+      if (list.length) drawGantt(list); else ganttEl.replaceChildren(el('div', 'empty', "Bu filtr bo'yicha menejer yo'q"));
+    } else if (v === 'errors') {
+      drawErrors(day, list);
+    } else {
+      drawTable(list);
+    }
+  });
+
+  const named = { kartochkalar: 'cards', 'ish-vaqti': 'time', jadval: 'table', kamchiliklar: 'errors' }[location.hash.slice(1)];
+  if (named) dash.setParams({ view: named });
+})();
+</script>
+
+<script>
+// ===== Hafta / Oy: ishlayotgan va ishlamayotgan menejerlar ro'yxati =====
+(() => {
+  const root = document.querySelector('.qd');
+  const $ = (s) => root.querySelector(s);
+  const fmt = d3.format(',');
+  const num = (v) => fmt(Math.round(v)).replace(/,/g, ' ');
+  const f1 = d3.format('.1f');
+  const big = (v) => (v >= 1e6 ? d3.format('.1f')(v / 1e6).replace('.0', '') + ' mln' : num(v));
+  const months = ['yanvar','fevral','mart','aprel','may','iyun','iyul','avgust','sentabr','oktabr','noyabr','dekabr'];
+  const el = (tag, className, text) => { const e = document.createElement(tag); if (className) e.className = className; if (text != null) e.textContent = text; return e; };
+  const P = () => dash.params();
+
+  // Hukm qoidasi (sozlash mumkin)
+  const RULE = { goodShare: 0.7, goodActive: 6, goodErrPerDay: 5, badShare: 0.4, badActive: 4 };
+
+  root.querySelectorAll('.lx-period button').forEach((b) => b.addEventListener('click', () => dash.setParams({ period: b.dataset.p })));
+
+  function range(day, period, days) {
+    const d = new Date(day + 'T00:00:00Z');
+    let a, b;
+    if (period === 'week') { const wd = (d.getUTCDay() + 6) % 7; a = new Date(d); a.setUTCDate(d.getUTCDate() - wd); b = new Date(a); b.setUTCDate(a.getUTCDate() + 6); }
+    else { a = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); b = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)); }
+    const A = a.toISOString().slice(0, 10), B = b.toISOString().slice(0, 10);
+    const inR = days.filter((x) => x >= A && x <= B);
+    const lbl = (s) => { const [, m, x] = s.split('-').map(Number); return x + '-' + months[m - 1]; };
+    const label = period === 'week' ? `Hafta: ${lbl(A)} – ${lbl(B)}` : `Oy: ${months[a.getUTCMonth()]} ${a.getUTCFullYear()}`;
+    return { A, B, days: inR, label };
+  }
+
+  function aggregate(rows, errs, rg, team, query) {
+    const live = rg.liveDay;
+    const days = new Set(rg.days);
+    const last = rg.days[rg.days.length - 1];
+    const countDays = rg.days.filter((x) => x !== live);
+    const by = {};
+    for (const x of rows) {
+      if (!days.has(x.day)) continue;
+      if (team && x.team !== team) continue;
+      if (query && !x.manager.toLowerCase().includes(query)) continue;
+      const m = by[x.manager] = by[x.manager] || { manager: x.manager, team: x.team, n: 0, worked: 0, weak: 0, absent: 0, active: 0, activeDays: 0, short: 0, idle: 0, calls: 0, connected: 0, talk: 0, paid: 0, paid_sum: 0, new_leads: 0, qualified: 0, err: 0, rules: {}, hyg: null };
+      if (x.day === last) m.hyg = { overdue_tasks: x.overdue_tasks, leads_no_task: x.leads_no_task, ojop_stale: x.ojop_stale, new_untaken: x.new_untaken };
+      if (x.day === live) continue; // bugun hali tugamagan — hisobga olinmaydi
+      m.n++;
+      if (x.bucket === 'Ishladi') m.worked++; else if (x.bucket === 'Sust') m.weak++; else m.absent++;
+      if (x.bucket !== 'Ishlamadi') { m.active += x.active_hours; m.activeDays++; m.short += x.short_hours; m.idle += x.idle_hours; }
+      m.calls += x.calls; m.connected += x.connected; m.talk += x.talk_min; m.paid += x.paid; m.paid_sum += x.paid_sum; m.new_leads += x.new_leads; m.qualified += x.qualified;
+    }
+    for (const e of errs) {
+      if (!days.has(e.day) || e.day === live || /^G/.test(e.rule)) continue;
+      const m = by[e.manager]; if (!m) continue;
+      m.err++; m.rules[e.rule] = (m.rules[e.rule] || 0) + 1;
+    }
+    const total = countDays.length || 1;
+    return Object.values(by).filter((m) => m.worked + m.weak > 0 || m.hyg).map((m) => {
+      const share = m.worked / total;
+      const avg = m.activeDays ? m.active / m.activeDays : 0;
+      const epd = m.activeDays ? m.err / m.activeDays : m.err;
+      let verdict = 'Nazoratda';
+      if (share >= RULE.goodShare && avg >= RULE.goodActive && epd <= RULE.goodErrPerDay) verdict = 'Ishlayapti';
+      else if (share < RULE.badShare || avg < RULE.badActive) verdict = 'Ishlamayapti';
+      return { ...m, total, share, avg, epd, verdict, hyg: m.hyg || { overdue_tasks: 0, leads_no_task: 0, ojop_stale: 0, new_untaken: 0 } };
+    });
+  }
+
+  const vcls = { Ishlayapti: 'g', Nazoratda: 'y', Ishlamayapti: 'r' };
+
+  function personRow(m) {
+    const li = el('div', 'pr ' + vcls[m.verdict]);
+    const head = el('div', 'pr-h');
+    const who = el('div'); who.append(el('div', 'mc-name', m.manager), el('div', 'mc-team', m.team));
+    head.append(who, el('span', 'pill', m.verdict));
+    li.appendChild(head);
+    const kv = el('div', 'pr-kv');
+    const item = (k, v, bad) => { const d = el('div', bad ? 'bad' : ''); d.append(el('b', '', v), el('span', '', k)); kv.appendChild(d); };
+    item('ishladi / jami kun', `${m.worked} / ${m.total}`, m.share < RULE.badShare);
+    item("o'rtacha faol soat", f1(m.avg) + ' / 8', m.avg < RULE.badActive);
+    item('8 soatdan jami kam', f1(m.short) + ' soat', m.short > m.activeDays * 2);
+    item('ishlamagan kun', String(m.absent), m.absent > 0);
+    item('kamchilik (R1–R9)', num(m.err) + ` · ${f1(m.epd)}/kun`, m.epd > RULE.goodErrPerDay);
+    item("muddati o'tgan vazifa", num(m.hyg.overdue_tasks), m.hyg.overdue_tasks > 0);
+    item('vazifasiz lid', num(m.hyg.leads_no_task), m.hyg.leads_no_task > 0);
+    item('ОЖОП 7+ kun', num(m.hyg.ojop_stale), m.hyg.ojop_stale > 0);
+    item("to'lov", `${num(m.paid)} · ${big(m.paid_sum)}`, false);
+    item('dozvon / suhbat', `${num(m.connected)} · ${f1(m.talk / 60)} soat`, false);
+    li.appendChild(kv);
+    const top = Object.entries(m.rules).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (top.length) { const rc = el('div', 'rc'); top.forEach(([c, v]) => rc.appendChild(el('span', 'rchip', c + ' ×' + v))); li.appendChild(rc); }
+    return li;
+  }
+
+  function render() {
+    const p = P();
+    const period = p.period || 'day';
+    root.querySelectorAll('.lx-period button').forEach((b) => b.classList.toggle('on', b.dataset.p === period));
+    const isDay = period === 'day';
+    ['.hero', '.kpis', '.toolbar .seg', '.lx-count', '.v-cards', '.v-time', '.v-table', '.v-errors'].forEach((s) => { const e = $(s); if (e && !isDay) e.setAttribute('data-period-hidden', ''); else if (e) e.removeAttribute('data-period-hidden'); });
+    const sec = $('.v-period');
+    sec.hidden = isDay;
+    if (isDay) return;
+    const k = dash.data('kun'), xs = dash.data('xatolar');
+    if (k.status !== 'ok') return;
+    const days = [...new Set(k.data.map((r) => r.day))].sort();
+    const day = p.day && days.includes(p.day) ? p.day : days[days.length - 1];
+    const rg = range(day, period, days);
+    rg.liveDay = days[days.length - 1] === new Date().toISOString().slice(0, 10) ? days[days.length - 1] : null;
+    $('.lx-day').textContent = rg.label + ` · ${rg.days.filter((x) => x !== rg.liveDay).length} ta tugagan kun`;
+    $('.lx-live').hidden = true;
+    const list = aggregate(k.data, xs.status === 'ok' ? xs.data : [], rg, p.team || '', (p._q || '').toLowerCase());
+    const good = list.filter((m) => m.verdict === 'Ishlayapti').sort((a, b) => b.avg - a.avg);
+    const mid = list.filter((m) => m.verdict === 'Nazoratda').sort((a, b) => a.avg - b.avg);
+    const bad = list.filter((m) => m.verdict === 'Ishlamayapti').sort((a, b) => a.avg - b.avg);
+    $('.lx-pc-g').textContent = good.length; $('.lx-pc-y').textContent = mid.length; $('.lx-pc-r').textContent = bad.length;
+    const fill = (sel, arr) => { const box = $(sel); box.replaceChildren(...(arr.length ? arr.map(personRow) : [el('div', 'empty', "Yo'q")])); };
+    fill('.lx-pl-r', bad); fill('.lx-pl-y', mid); fill('.lx-pl-g', good);
+  }
+
+  dash.onData(render);
+})();
+
+</script>
+</div>
+</body>
+</html>
